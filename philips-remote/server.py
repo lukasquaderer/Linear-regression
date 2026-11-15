@@ -67,6 +67,7 @@ lock = threading.Lock()
 config = {"host": "", "scheme": "http", "port": 1925, "version": 1,
           "device_id": "", "auth_key": ""}
 pending_pair = {}
+phone_url = ""  # set when the server is reachable from other devices on the network
 
 
 def load_config():
@@ -86,7 +87,7 @@ def save_config():
 def public_config():
     return {"host": config["host"], "scheme": config["scheme"], "port": config["port"],
             "version": config["version"], "paired": bool(config["auth_key"]),
-            "demo": not config["host"]}
+            "demo": not config["host"], "phone_url": phone_url}
 
 
 # --------------------------------------------------------------------------
@@ -433,6 +434,7 @@ def main():
     parser.add_argument("--tv", help="IP address of the TV (omit for demo mode / saved config)")
     parser.add_argument("--listen", default="127.0.0.1", help="address to serve on")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--open", action="store_true", help="open the remote in the browser")
     args = parser.parse_args()
 
     load_config()
@@ -448,8 +450,13 @@ def main():
     mode = "TV at %s" % config["host"] if config["host"] else "demo mode"
     print("Philips remote running on http://%s:%s (%s)" % (args.listen, args.port, mode))
     if args.listen == "0.0.0.0":
+        global phone_url
         for ip in lan_addresses():
-            print("  On your phone, open http://%s:%s" % (ip, args.port))
+            phone_url = "http://%s:%s" % (ip, args.port)
+            print("  On your phone, open %s" % phone_url)
+    if args.open:
+        import webbrowser
+        threading.Timer(0.5, webbrowser.open, ["http://localhost:%s" % args.port]).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

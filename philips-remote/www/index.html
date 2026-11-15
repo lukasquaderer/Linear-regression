@@ -254,6 +254,8 @@
         <button class="btn">Confirm</button>
       </form>
     </div>
+    <p class="hint" id="phonehint" hidden>On your phone (same Wi-Fi), open <b id="phoneurl"></b> in Safari,
+      then Share → Add to Home Screen.</p>
     <p class="hint" id="nethint">Leave empty for demo mode (simulated TV). The TV and this computer must be on the same network.</p>
   </div>
 
@@ -328,6 +330,18 @@ function applyConfig(c) {
   $('mode').textContent = c.demo ? 'Demo mode' : `${c.host} · API v${c.version}`;
   $('mode').classList.toggle('live', !c.demo);
   $('pairbox').hidden = c.demo || c.scheme !== 'https' || c.paired;
+  $('phonehint').hidden = !c.phone_url;
+  $('phoneurl').textContent = c.phone_url || '';
+}
+
+// First start on a computer with no TV set up yet: look for the TV straight away.
+function autoFind() {
+  if (NATIVE || !cfg.demo) return;
+  try {
+    if (localStorage.getItem('philipsRemoteAutoFind')) return;
+    localStorage.setItem('philipsRemoteAutoFind', '1');
+  } catch (e) { return; }
+  $('find').click();
 }
 
 // Buttons: single press, or auto-repeat while held for volume keys.
@@ -432,7 +446,7 @@ $('pairform').addEventListener('submit', async e => {
   catch (err) { fail(err); }
 });
 
-call('/api/config').then(applyConfig).then(refresh).catch(fail);
+call('/api/config').then(applyConfig).then(refresh).then(autoFind).catch(fail);
 setInterval(() => { if (!document.hidden) refresh(); }, 1500);
 </script>
 </body>

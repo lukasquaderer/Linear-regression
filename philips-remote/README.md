@@ -37,13 +37,18 @@ under **TV connection**. Run `npx cap sync ios` again after changing anything in
 
 ### Home-screen web app (no Mac needed)
 
-```bash
-python3 server.py --listen 0.0.0.0
-```
+On a computer that is on the same network as the TV:
 
-Open the address it prints in Safari on the phone, then Share → **Add to Home
-Screen**. It opens full screen like an app, but only works while the computer
-is running `server.py` on the same network.
+- **Mac:** double-click `start-remote.command` (the first time: right-click →
+  Open, because the file was downloaded).
+- **Windows:** double-click `start-remote.bat`. It needs Python 3 from
+  python.org; allow the firewall prompt so the phone can reach it.
+- **Anything else:** `python3 server.py --listen 0.0.0.0 --open`
+
+The remote opens in the browser, searches the network for the TV and connects
+to it. Under **TV connection** it shows the address to open in Safari on the
+phone; then Share → **Add to Home Screen**. It opens full screen like an app,
+but only works while the computer keeps this program running.
 
 ### Browser on a computer
 
@@ -52,9 +57,10 @@ python3 server.py                    # then open http://localhost:8080
 python3 server.py --tv 192.168.1.50  # connect to a TV straight away
 ```
 
-Enter the TV's IP address under **TV connection** (find it on the TV under
-Settings → Network → View network settings). The app detects the API version
-automatically.
+The first time it starts, the remote searches the network for the TV by
+itself; **Find my TV on this network** repeats the search. You can also enter
+the TV's IP address under **TV connection** (find it on the TV under Settings →
+Network → View network settings). The API version is detected automatically.
 
 ## Changing channels
 
