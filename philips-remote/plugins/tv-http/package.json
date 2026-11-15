@@ -1,0 +1,13 @@
+{
+  "name": "tv-http",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native HTTP for talking to a Philips TV on the local network (digest auth, self-signed TLS)",
+  "files": ["ios/Sources", "Package.swift"],
+  "capacitor": {
+    "ios": { "src": "ios" }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

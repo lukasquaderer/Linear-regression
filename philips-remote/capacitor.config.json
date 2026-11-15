@@ -1,0 +1,9 @@
+{
+  "appId": "app.virtualremote.philipstv",
+  "appName": "TV Remote",
+  "webDir": "www",
+  "backgroundColor": "#14161b",
+  "ios": {
+    "contentInset": "never"
+  }
+}

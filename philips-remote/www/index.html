@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TV Remote">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
 <title>Philips TV Remote</title>
 <style>
   :root {
@@ -13,20 +21,25 @@
   body {
     margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
     font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
-    display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start;
-    padding: 24px 16px;
+    display: grid; grid-template-columns: minmax(0, 420px); gap: 12px; justify-content: center;
+    align-content: start; justify-items: center;
+    padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+             calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; touch-action: manipulation;
+    overscroll-behavior-y: none;
   }
-  .side { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+  .side { width: 100%; display: flex; flex-direction: column; gap: 16px; }
   h1 { font-size: 20px; margin: 0; }
   .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--key); color: var(--muted); margin-left: 8px; vertical-align: middle; }
   .badge.live { background: #17402a; color: #6ee7a0; }
 
-  .tv { background: #000; border: 6px solid #2b2f38; border-radius: 10px; aspect-ratio: 16/9;
+  .tv { background: #000; border: 4px solid #2b2f38; border-radius: 10px; height: 96px;
         position: relative; overflow: hidden; }
   .tv .screen { position: absolute; inset: 0; display: flex; flex-direction: column;
         align-items: center; justify-content: center; transition: background .3s; }
-  .tv .num { font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-  .tv .name { color: rgba(255,255,255,.8); margin-top: 6px; }
+  .tv .screen { padding-bottom: 24px; }
+  .tv .num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .tv .name { color: rgba(255,255,255,.8); margin-top: 2px; font-size: 13px; }
   .tv .entry { position: absolute; top: 10px; right: 14px; font-size: 26px; font-weight: 700;
         font-variant-numeric: tabular-nums; }
   .tv .vol { position: absolute; left: 14px; right: 14px; bottom: 12px; display: flex; gap: 10px;
@@ -42,43 +55,99 @@
   .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
   .row { display: flex; gap: 8px; }
   input { flex: 1; min-width: 0; background: var(--remote); border: 1px solid var(--key-hi); color: var(--text);
-          border-radius: 6px; padding: 8px 10px; font: inherit; }
+          border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 16px; /* 16px stops iOS zooming on focus */ }
   .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
   .btn.ghost { background: var(--key); }
   .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
-  #msg { min-height: 20px; font-size: 13px; color: var(--muted); }
+  #msg { min-height: 0; font-size: 13px; color: var(--muted); }
   #msg.err { color: #ff8a8e; }
   kbd { background: var(--key); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
 
-  .remote { width: 270px; background: var(--remote); border-radius: 36px; padding: 22px 20px 30px;
+  .remote { width: 100%; max-width: 380px; background: var(--remote); border-radius: 28px; padding: 16px;
             box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
-            display: flex; flex-direction: column; gap: 16px; user-select: none; }
+            display: flex; flex-direction: column; gap: 12px;
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .k { background: var(--key); color: var(--text); border: 0; border-radius: 12px; height: 46px;
+  .k { background: var(--key); color: var(--text); border: 0; border-radius: 12px; height: 48px; padding: 0;
        font: 600 15px system-ui, sans-serif; cursor: pointer; transition: transform .05s, background .1s;
        touch-action: manipulation; }
   .k:hover { background: var(--key-hi); }
   .k:active, .k.down { transform: scale(.94); background: var(--accent); }
   .k.small { font-size: 12px; font-weight: 500; }
-  .k.power { background: var(--danger); border-radius: 50%; width: 46px; }
+  .k.power { background: var(--danger); border-radius: 50%; width: 48px; }
   .top { display: flex; justify-content: space-between; align-items: center; }
   .top .ir { width: 8px; height: 8px; border-radius: 50%; background: #3a1114; }
   .top .ir.flash { background: #ff4d4f; box-shadow: 0 0 8px #ff4d4f; }
-  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 50px); gap: 6px;
-          width: 190px; margin: 0 auto; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 54px); gap: 6px;
+          width: 210px; margin: 0 auto; }
   .dpad .k { height: auto; }
   .dpad .ok { border-radius: 50%; background: var(--key-hi); }
   .rockers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center; }
   .rocker { display: flex; flex-direction: column; background: var(--key); border-radius: 22px; overflow: hidden; }
-  .rocker .k { border-radius: 0; background: transparent; height: 48px; font-size: 20px; }
+  .rocker .k { border-radius: 0; background: transparent; height: 54px; font-size: 20px; }
   .rocker .k:active, .rocker .k.down { background: var(--accent); }
   .rocker span { text-align: center; font-size: 11px; color: var(--muted); letter-spacing: .08em; }
   .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .colors .k { height: 14px; border-radius: 7px; }
+  .colors .k { height: 22px; border-radius: 11px; }
   .brand { text-align: center; color: #555c6b; letter-spacing: .3em; font-size: 12px; margin-top: 4px; }
+  .brand { display: none; }
+  .side { gap: 10px; }
+  h1 { font-size: 17px; }
+  .pane { display: contents; }
+  .remote:not(.show-num) .pane[data-pane="num"], .remote.show-num .pane[data-pane="nav"] { display: none; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--key); border-radius: 10px; padding: 3px; }
+  .tabs button { background: transparent; border: 0; color: var(--muted); font: 600 13px system-ui, sans-serif;
+                 height: 32px; border-radius: 8px; cursor: pointer; touch-action: manipulation; }
+  .tabs button[aria-selected="true"] { background: var(--remote); color: var(--text); }
+
+  /* Wide screens: remote on the left, TV display and settings on the right. */
+  @media (min-width: 760px) {
+    body { grid-template-columns: 290px 420px; grid-template-areas: "remote status" "remote cards";
+           grid-template-rows: auto 1fr; column-gap: 32px; padding-top: 28px; }
+    #status { grid-area: status; }
+    #remote { grid-area: remote; }
+    #cards { grid-area: cards; }
+    .side { gap: 16px; }
+    #msg { min-height: 20px; }
+    h1 { font-size: 20px; }
+    .tabs { display: none; }
+    .brand { display: block; }
+    .remote .pane[data-pane] { display: contents !important; }
+    .remote { border-radius: 36px; padding: 22px 20px 30px; gap: 16px; }
+    .tv { height: auto; aspect-ratio: 16/9; border-width: 6px; }
+    .tv .num { font-size: 64px; }
+    .tv .name { font-size: 15px; margin-top: 6px; }
+    .k { height: 46px; }
+    .k.power { width: 46px; }
+    .dpad { grid-template-rows: repeat(3, 50px); width: 190px; }
+    .rocker .k { height: 48px; }
+    .colors .k { height: 14px; }
+  }
+  @media (hover: none) {
+    .k:hover { background: var(--key); }
+    .dpad .ok:hover { background: var(--key-hi); }
+    .rocker .k:hover { background: transparent; }
+    .k:active, .rocker .k:active, .dpad .ok:active { background: var(--accent); }
+    .keyboard-help { display: none; }
+  }
 </style>
 </head>
 <body>
+
+<div class="side" id="status">
+  <h1>Philips TV Remote <span class="badge" id="mode">…</span></h1>
+
+  <div class="tv" id="tv">
+    <div class="screen" id="screen">
+      <div class="entry" id="entry"></div>
+      <div class="num" id="num">–</div>
+      <div class="name" id="name"></div>
+      <div class="vol"><span id="voltxt">Vol</span><div class="bar"><i id="volbar"></i></div></div>
+    </div>
+    <span class="led"></span>
+  </div>
+  <div id="msg"></div>
+</div>
 
 <div class="remote" id="remote">
   <div class="top">
@@ -87,6 +156,12 @@
     <button class="k small" data-key="Source" style="width:76px">SOURCE</button>
   </div>
 
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-nav" aria-selected="true">Navigate</button>
+    <button type="button" role="tab" id="tab-num" aria-selected="false">Numbers</button>
+  </div>
+
+  <div class="pane" data-pane="nav">
   <div class="grid">
     <button class="k small" data-key="Home">HOME</button>
     <button class="k small" data-key="WatchTV">TV</button>
@@ -107,6 +182,17 @@
     <button class="k small" data-key="Teletext">TEXT</button>
   </div>
 
+  </div>
+
+  <div class="pane" data-pane="num">
+  <div class="grid">
+    <button class="k" data-key="Digit1">1</button><button class="k" data-key="Digit2">2</button><button class="k" data-key="Digit3">3</button>
+    <button class="k" data-key="Digit4">4</button><button class="k" data-key="Digit5">5</button><button class="k" data-key="Digit6">6</button>
+    <button class="k" data-key="Digit7">7</button><button class="k" data-key="Digit8">8</button><button class="k" data-key="Digit9">9</button>
+    <button class="k small" data-key="Subtitle">SUB</button><button class="k" data-key="Digit0">0</button><button class="k small" data-key="Dot">·</button>
+  </div>
+  </div>
+
   <div class="rockers">
     <div class="rocker">
       <button class="k" data-key="VolumeUp" data-repeat>+</button>
@@ -121,13 +207,7 @@
     </div>
   </div>
 
-  <div class="grid">
-    <button class="k" data-key="Digit1">1</button><button class="k" data-key="Digit2">2</button><button class="k" data-key="Digit3">3</button>
-    <button class="k" data-key="Digit4">4</button><button class="k" data-key="Digit5">5</button><button class="k" data-key="Digit6">6</button>
-    <button class="k" data-key="Digit7">7</button><button class="k" data-key="Digit8">8</button><button class="k" data-key="Digit9">9</button>
-    <button class="k small" data-key="Subtitle">SUB</button><button class="k" data-key="Digit0">0</button><button class="k small" data-key="Dot">·</button>
-  </div>
-
+  <div class="pane" data-pane="nav">
   <div class="grid">
     <button class="k" data-key="Rewind">⏪</button>
     <button class="k" data-key="PlayPause">⏯</button>
@@ -140,22 +220,11 @@
     <button class="k" data-key="YellowColour" style="background:#e0b800" aria-label="Yellow"></button>
     <button class="k" data-key="BlueColour" style="background:#2f6fe0" aria-label="Blue"></button>
   </div>
+  </div>
   <div class="brand">VIRTUAL REMOTE</div>
 </div>
 
-<div class="side">
-  <h1>Philips TV Remote <span class="badge" id="mode">…</span></h1>
-
-  <div class="tv" id="tv">
-    <div class="screen" id="screen">
-      <div class="entry" id="entry"></div>
-      <div class="num" id="num">–</div>
-      <div class="name" id="name"></div>
-      <div class="vol"><span id="voltxt">Vol</span><div class="bar"><i id="volbar"></i></div></div>
-    </div>
-    <span class="led"></span>
-  </div>
-  <div id="msg"></div>
+<div class="side" id="cards">
 
   <div class="card">
     <h2>Go to channel</h2>
@@ -168,7 +237,7 @@
   <div class="card">
     <h2>TV connection</h2>
     <form class="row" id="cfgform">
-      <input id="host" placeholder="TV IP address, e.g. 192.168.1.50" autocomplete="off">
+      <input id="host" placeholder="TV IP, e.g. 192.168.1.50" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
       <button class="btn">Connect</button>
       <button class="btn ghost" type="button" id="demo">Demo</button>
     </form>
@@ -180,10 +249,10 @@
         <button class="btn">Confirm</button>
       </form>
     </div>
-    <p class="hint">Leave empty for demo mode (simulated TV). The TV and this computer must be on the same network.</p>
+    <p class="hint" id="nethint">Leave empty for demo mode (simulated TV). The TV and this computer must be on the same network.</p>
   </div>
 
-  <div class="card">
+  <div class="card keyboard-help">
     <h2>Keyboard</h2>
     <p class="hint" style="margin:0">
       <kbd>0</kbd>–<kbd>9</kbd> digits · <kbd>↑↓←→</kbd> navigate · <kbd>Enter</kbd> OK · <kbd>Backspace</kbd> back ·
@@ -193,11 +262,16 @@
   </div>
 </div>
 
+<script src="backend.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+// Inside the phone app there is no server: talk to the TV directly.
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if (NATIVE) $('nethint').textContent = 'Leave empty for demo mode (simulated TV). The phone and the TV must be on the same Wi-Fi.';
 let cfg = {demo: true};
 
 async function call(path, body) {
+  if (NATIVE) return window.directBackend.call(path, body);
   const res = await fetch(path, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   const data = await res.json().catch(() => ({}));
@@ -271,6 +345,14 @@ $('remote').addEventListener('click', e => {
   if (e.detail === 0) press(b.dataset.key);
   else b.blur();  // keep keyboard shortcuts working after a mouse/touch press
 });
+
+function showPane(num) {
+  $('remote').classList.toggle('show-num', num);
+  $('tab-nav').setAttribute('aria-selected', String(!num));
+  $('tab-num').setAttribute('aria-selected', String(num));
+}
+$('tab-nav').addEventListener('click', () => showPane(false));
+$('tab-num').addEventListener('click', () => showPane(true));
 
 const KEYMAP = {
   ArrowUp: 'CursorUp', ArrowDown: 'CursorDown', ArrowLeft: 'CursorLeft', ArrowRight: 'CursorRight',

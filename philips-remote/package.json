@@ -1,0 +1,18 @@
+{
+  "name": "philips-remote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Virtual remote control for Philips TVs",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "tv-http": "file:plugins/tv-http"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}

@@ -26,6 +26,15 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+WWW = os.path.join(HERE, "www")
+STATIC = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/backend.js": ("backend.js", "text/javascript; charset=utf-8"),
+    "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
+    "/icon-180.png": ("icon-180.png", "image/png"),
+    "/icon-512.png": ("icon-512.png", "image/png"),
+}
 CONFIG_PATH = os.path.join(HERE, "config.json")
 TIMEOUT = 4
 
@@ -337,9 +346,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self, method):
         path = self.path.split("?")[0]
-        if method == "GET" and path in ("/", "/index.html"):
-            with open(os.path.join(HERE, "index.html"), "rb") as f:
-                return self._send(200, f.read(), "text/html; charset=utf-8")
+        if method == "GET" and path in STATIC:
+            name, ctype = STATIC[path]
+            with open(os.path.join(WWW, name), "rb") as f:
+                return self._send(200, f.read(), ctype)
         body = {}
         if method == "POST":
             # Only accept JSON so other websites cannot drive the TV via simple form posts.
@@ -369,6 +379,17 @@ class Handler(BaseHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
+def lan_addresses():
+    """Best-effort guess of this computer's address on the local network."""
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))  # no packet is sent for a UDP connect
+            return [s.getsockname()[0]]
+    except OSError:
+        return []
+
+
 def main():
     parser = argparse.ArgumentParser(description="Virtual remote for Philips TVs")
     parser.add_argument("--tv", help="IP address of the TV (omit for demo mode / saved config)")
@@ -388,6 +409,9 @@ def main():
     server = ThreadingHTTPServer((args.listen, args.port), Handler)
     mode = "TV at %s" % config["host"] if config["host"] else "demo mode"
     print("Philips remote running on http://%s:%s (%s)" % (args.listen, args.port, mode))
+    if args.listen == "0.0.0.0":
+        for ip in lan_addresses():
+            print("  On your phone, open http://%s:%s" % (ip, args.port))
     try:
         server.serve_forever()
     except KeyboardInterrupt:
