@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Philips TV Remote</title>
+<style>
+  :root {
+    --bg: #14161b; --panel: #1f232b; --remote: #0d0f13; --key: #2a2f3a; --key-hi: #3a4150;
+    --text: #e8eaf0; --muted: #8b93a5; --accent: #4f9cff; --danger: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start;
+    padding: 24px 16px;
+  }
+  .side { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--key); color: var(--muted); margin-left: 8px; vertical-align: middle; }
+  .badge.live { background: #17402a; color: #6ee7a0; }
+
+  .tv { background: #000; border: 6px solid #2b2f38; border-radius: 10px; aspect-ratio: 16/9;
+        position: relative; overflow: hidden; }
+  .tv .screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; transition: background .3s; }
+  .tv .num { font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .tv .name { color: rgba(255,255,255,.8); margin-top: 6px; }
+  .tv .entry { position: absolute; top: 10px; right: 14px; font-size: 26px; font-weight: 700;
+        font-variant-numeric: tabular-nums; }
+  .tv .vol { position: absolute; left: 14px; right: 14px; bottom: 12px; display: flex; gap: 10px;
+        align-items: center; font-size: 13px; }
+  .tv .bar { flex: 1; height: 5px; background: rgba(255,255,255,.25); border-radius: 3px; overflow: hidden; }
+  .tv .bar i { display: block; height: 100%; background: #fff; }
+  .tv.off .screen { background: #000 !important; }
+  .tv.off .screen > * { display: none; }
+  .tv .led { position: absolute; bottom: 4px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: #2ecc71; }
+  .tv.off .led { background: var(--danger); }
+
+  .card { background: var(--panel); border-radius: 10px; padding: 14px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .row { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; background: var(--remote); border: 1px solid var(--key-hi); color: var(--text);
+          border-radius: 6px; padding: 8px 10px; font: inherit; }
+  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  .btn.ghost { background: var(--key); }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  #msg { min-height: 20px; font-size: 13px; color: var(--muted); }
+  #msg.err { color: #ff8a8e; }
+  kbd { background: var(--key); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+
+  .remote { width: 270px; background: var(--remote); border-radius: 36px; padding: 22px 20px 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+            display: flex; flex-direction: column; gap: 16px; user-select: none; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .k { background: var(--key); color: var(--text); border: 0; border-radius: 12px; height: 46px;
+       font: 600 15px system-ui, sans-serif; cursor: pointer; transition: transform .05s, background .1s;
+       touch-action: manipulation; }
+  .k:hover { background: var(--key-hi); }
+  .k:active, .k.down { transform: scale(.94); background: var(--accent); }
+  .k.small { font-size: 12px; font-weight: 500; }
+  .k.power { background: var(--danger); border-radius: 50%; width: 46px; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .top .ir { width: 8px; height: 8px; border-radius: 50%; background: #3a1114; }
+  .top .ir.flash { background: #ff4d4f; box-shadow: 0 0 8px #ff4d4f; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 50px); gap: 6px;
+          width: 190px; margin: 0 auto; }
+  .dpad .k { height: auto; }
+  .dpad .ok { border-radius: 50%; background: var(--key-hi); }
+  .rockers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center; }
+  .rocker { display: flex; flex-direction: column; background: var(--key); border-radius: 22px; overflow: hidden; }
+  .rocker .k { border-radius: 0; background: transparent; height: 48px; font-size: 20px; }
+  .rocker .k:active, .rocker .k.down { background: var(--accent); }
+  .rocker span { text-align: center; font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+  .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .colors .k { height: 14px; border-radius: 7px; }
+  .brand { text-align: center; color: #555c6b; letter-spacing: .3em; font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="remote" id="remote">
+  <div class="top">
+    <button class="k power" data-key="Standby" title="Power (P)">⏻</button>
+    <span class="ir" id="ir"></span>
+    <button class="k small" data-key="Source" style="width:76px">SOURCE</button>
+  </div>
+
+  <div class="grid">
+    <button class="k small" data-key="Home">HOME</button>
+    <button class="k small" data-key="WatchTV">TV</button>
+    <button class="k small" data-key="Info">INFO</button>
+  </div>
+
+  <div class="dpad">
+    <span></span><button class="k" data-key="CursorUp">▲</button><span></span>
+    <button class="k" data-key="CursorLeft">◀</button>
+    <button class="k ok" data-key="Confirm">OK</button>
+    <button class="k" data-key="CursorRight">▶</button>
+    <span></span><button class="k" data-key="CursorDown">▼</button><span></span>
+  </div>
+
+  <div class="grid">
+    <button class="k small" data-key="Back">BACK</button>
+    <button class="k small" data-key="Options">OPTIONS</button>
+    <button class="k small" data-key="Teletext">TEXT</button>
+  </div>
+
+  <div class="rockers">
+    <div class="rocker">
+      <button class="k" data-key="VolumeUp" data-repeat>+</button>
+      <span>VOL</span>
+      <button class="k" data-key="VolumeDown" data-repeat>−</button>
+    </div>
+    <button class="k small" data-key="Mute">MUTE</button>
+    <div class="rocker">
+      <button class="k" data-key="ChannelStepUp">⌃</button>
+      <span>CH</span>
+      <button class="k" data-key="ChannelStepDown">⌄</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <button class="k" data-key="Digit1">1</button><button class="k" data-key="Digit2">2</button><button class="k" data-key="Digit3">3</button>
+    <button class="k" data-key="Digit4">4</button><button class="k" data-key="Digit5">5</button><button class="k" data-key="Digit6">6</button>
+    <button class="k" data-key="Digit7">7</button><button class="k" data-key="Digit8">8</button><button class="k" data-key="Digit9">9</button>
+    <button class="k small" data-key="Subtitle">SUB</button><button class="k" data-key="Digit0">0</button><button class="k small" data-key="Dot">·</button>
+  </div>
+
+  <div class="grid">
+    <button class="k" data-key="Rewind">⏪</button>
+    <button class="k" data-key="PlayPause">⏯</button>
+    <button class="k" data-key="FastForward">⏩</button>
+  </div>
+
+  <div class="colors">
+    <button class="k" data-key="RedColour" style="background:#d93636" aria-label="Red"></button>
+    <button class="k" data-key="GreenColour" style="background:#2e9e4f" aria-label="Green"></button>
+    <button class="k" data-key="YellowColour" style="background:#e0b800" aria-label="Yellow"></button>
+    <button class="k" data-key="BlueColour" style="background:#2f6fe0" aria-label="Blue"></button>
+  </div>
+  <div class="brand">VIRTUAL REMOTE</div>
+</div>
+
+<div class="side">
+  <h1>Philips TV Remote <span class="badge" id="mode">…</span></h1>
+
+  <div class="tv" id="tv">
+    <div class="screen" id="screen">
+      <div class="entry" id="entry"></div>
+      <div class="num" id="num">–</div>
+      <div class="name" id="name"></div>
+      <div class="vol"><span id="voltxt">Vol</span><div class="bar"><i id="volbar"></i></div></div>
+    </div>
+    <span class="led"></span>
+  </div>
+  <div id="msg"></div>
+
+  <div class="card">
+    <h2>Go to channel</h2>
+    <form class="row" id="chform">
+      <input id="chnum" type="number" min="1" max="9999" placeholder="Channel number" inputmode="numeric">
+      <button class="btn">Go</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>TV connection</h2>
+    <form class="row" id="cfgform">
+      <input id="host" placeholder="TV IP address, e.g. 192.168.1.50" autocomplete="off">
+      <button class="btn">Connect</button>
+      <button class="btn ghost" type="button" id="demo">Demo</button>
+    </form>
+    <div id="pairbox" hidden>
+      <p class="hint">This TV needs pairing. Click Pair, then enter the PIN shown on the TV.</p>
+      <form class="row" id="pairform">
+        <button class="btn ghost" type="button" id="pairstart">Pair</button>
+        <input id="pin" placeholder="PIN" inputmode="numeric" autocomplete="off">
+        <button class="btn">Confirm</button>
+      </form>
+    </div>
+    <p class="hint">Leave empty for demo mode (simulated TV). The TV and this computer must be on the same network.</p>
+  </div>
+
+  <div class="card">
+    <h2>Keyboard</h2>
+    <p class="hint" style="margin:0">
+      <kbd>0</kbd>–<kbd>9</kbd> digits · <kbd>↑↓←→</kbd> navigate · <kbd>Enter</kbd> OK · <kbd>Backspace</kbd> back ·
+      <kbd>PgUp</kbd>/<kbd>PgDn</kbd> channel · <kbd>+</kbd>/<kbd>-</kbd> volume · <kbd>M</kbd> mute ·
+      <kbd>P</kbd> power · <kbd>H</kbd> home · <kbd>Space</kbd> play/pause
+    </p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let cfg = {demo: true};
+
+async function call(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(data.error || 'Request failed'); e.status = res.status; throw e; }
+  return data;
+}
+
+function say(text, err) { $('msg').textContent = text || ''; $('msg').className = err ? 'err' : ''; }
+
+function fail(e) {
+  say(e.message, true);
+  if (e.status === 401) $('pairbox').hidden = false;
+}
+
+function flash() {
+  $('ir').classList.add('flash');
+  setTimeout(() => $('ir').classList.remove('flash'), 120);
+}
+
+async function press(key) {
+  flash();
+  try { await call('/api/key', {key}); say(''); refresh(); }
+  catch (e) { fail(e); }
+}
+
+function render(s) {
+  $('tv').classList.toggle('off', !s.power);
+  $('num').textContent = s.channel ?? '–';
+  $('name').textContent = s.name || '';
+  $('entry').textContent = s.entry ? s.entry + '_' : '';
+  $('voltxt').textContent = s.muted ? 'Muted' : (s.volume == null ? 'Vol' : 'Vol ' + s.volume);
+  $('volbar').style.width = (s.muted || s.volume == null ? 0 : Math.min(100, s.volume / 60 * 100)) + '%';
+  const hue = ((s.channel || 0) * 47) % 360;
+  $('screen').style.background = `linear-gradient(135deg, hsl(${hue} 60% 28%), hsl(${(hue + 60) % 360} 60% 14%))`;
+}
+
+let refreshing = false;
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
+  try { render(await call('/api/status')); }
+  catch (e) { if (!$('msg').textContent) fail(e); }
+  finally { refreshing = false; }
+}
+
+function applyConfig(c) {
+  cfg = c;
+  $('host').value = c.host;
+  $('mode').textContent = c.demo ? 'Demo mode' : `${c.host} · API v${c.version}`;
+  $('mode').classList.toggle('live', !c.demo);
+  $('pairbox').hidden = c.demo || c.scheme !== 'https' || c.paired;
+}
+
+// Buttons: single press, or auto-repeat while held for volume keys.
+let repeatTimer = null;
+const stopRepeat = () => { clearTimeout(repeatTimer); clearInterval(repeatTimer); repeatTimer = null; };
+$('remote').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-key]');
+  if (!b) return;
+  press(b.dataset.key);
+  if ('repeat' in b.dataset) {
+    stopRepeat();
+    repeatTimer = setTimeout(() => { repeatTimer = setInterval(() => press(b.dataset.key), 150); }, 400);
+  }
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('remote').addEventListener(t, stopRepeat));
+// Keyboard activation of a focused button (pointer events don't fire for Enter/Space).
+$('remote').addEventListener('click', e => {
+  const b = e.target.closest('[data-key]');
+  if (!b) return;
+  if (e.detail === 0) press(b.dataset.key);
+  else b.blur();  // keep keyboard shortcuts working after a mouse/touch press
+});
+
+const KEYMAP = {
+  ArrowUp: 'CursorUp', ArrowDown: 'CursorDown', ArrowLeft: 'CursorLeft', ArrowRight: 'CursorRight',
+  Enter: 'Confirm', Backspace: 'Back', Escape: 'Back', PageUp: 'ChannelStepUp', PageDown: 'ChannelStepDown',
+  '+': 'VolumeUp', '=': 'VolumeUp', '-': 'VolumeDown', m: 'Mute', p: 'Standby', h: 'Home', i: 'Info',
+  o: 'Options', s: 'Source', ' ': 'PlayPause', '.': 'Dot',
+};
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
+  const key = /^[0-9]$/.test(e.key) ? 'Digit' + e.key : KEYMAP[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+  if (!key) return;
+  e.preventDefault();
+  const b = document.querySelector(`[data-key="${key}"]`);
+  if (b) { b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 120); }
+  press(key);
+});
+
+$('chform').addEventListener('submit', async e => {
+  e.preventDefault();
+  const number = parseInt($('chnum').value, 10);
+  if (!number) return;
+  flash();
+  try { await call('/api/channel', {number}); say('Switched to channel ' + number); $('chnum').value = ''; refresh(); }
+  catch (err) { fail(err); }
+});
+
+async function connect(host) {
+  say(host ? 'Looking for TV…' : '');
+  try {
+    applyConfig(await call('/api/config', {host}));
+    say(cfg.demo ? 'Demo mode: using the simulated TV.' : 'Connected to ' + cfg.host);
+    refresh();
+  } catch (err) { fail(err); }
+}
+$('cfgform').addEventListener('submit', e => { e.preventDefault(); connect($('host').value.trim()); });
+$('demo').addEventListener('click', () => connect(''));
+
+$('pairstart').addEventListener('click', async () => {
+  try { await call('/api/pair/request', {}); say('Enter the PIN shown on the TV.'); $('pin').focus(); }
+  catch (err) { fail(err); }
+});
+$('pairform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { applyConfig(await call('/api/pair/grant', {pin: $('pin').value})); say('Paired.'); $('pin').value = ''; refresh(); }
+  catch (err) { fail(err); }
+});
+
+call('/api/config').then(applyConfig).then(refresh).catch(fail);
+setInterval(() => { if (!document.hidden) refresh(); }, 1500);
+</script>
+</body>
+</html>

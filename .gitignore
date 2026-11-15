@@ -6,3 +6,6 @@ notebooks/monthly_report.html
 notebooks/my_project/
 notebooks/qma_repo/
 .pytest_cache/
+
+# Philips remote: saved TV address and pairing credentials
+philips-remote/config.json
