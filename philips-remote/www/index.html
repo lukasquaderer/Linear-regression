@@ -58,6 +58,7 @@
           border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 16px; /* 16px stops iOS zooming on focus */ }
   .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
   .btn.ghost { background: var(--key); }
+  .btn:disabled { opacity: .6; cursor: default; }
   .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
   #msg { min-height: 0; font-size: 13px; color: var(--muted); }
   #msg.err { color: #ff8a8e; }
@@ -241,6 +242,10 @@
       <button class="btn">Connect</button>
       <button class="btn ghost" type="button" id="demo">Demo</button>
     </form>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" type="button" id="find" style="flex:1">Find my TV on this network</button>
+    </div>
+    <div class="row" id="found" style="margin-top:8px; flex-wrap:wrap" hidden></div>
     <div id="pairbox" hidden>
       <p class="hint">This TV needs pairing. Click Pair, then enter the PIN shown on the TV.</p>
       <form class="row" id="pairform">
@@ -390,6 +395,32 @@ async function connect(host) {
 }
 $('cfgform').addEventListener('submit', e => { e.preventDefault(); connect($('host').value.trim()); });
 $('demo').addEventListener('click', () => connect(''));
+
+$('find').addEventListener('click', async () => {
+  const btn = $('find');
+  btn.disabled = true; btn.textContent = 'Searching the network…';
+  $('found').hidden = true; $('found').textContent = '';
+  say('Searching for Philips TVs. This takes up to 20 seconds.');
+  try {
+    const {tvs} = await call('/api/discover', {});
+    if (!tvs.length) {
+      say('No Philips TV found. Check that the TV is switched on and on the same network, or enter its IP address.', true);
+    } else if (tvs.length === 1) {
+      await connect(tvs[0].host);
+    } else {
+      say(`Found ${tvs.length} TVs. Choose one:`);
+      for (const tv of tvs) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn ghost';
+        b.textContent = tv.name ? `${tv.name} (${tv.host})` : tv.host;
+        b.addEventListener('click', () => { $('found').hidden = true; connect(tv.host); });
+        $('found').appendChild(b);
+      }
+      $('found').hidden = false;
+    }
+  } catch (err) { fail(err); }
+  btn.disabled = false; btn.textContent = 'Find my TV on this network';
+});
 
 $('pairstart').addEventListener('click', async () => {
   try { await call('/api/pair/request', {}); say('Enter the PIN shown on the TV.'); $('pin').focus(); }

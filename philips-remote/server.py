@@ -158,6 +158,42 @@ def detect(host):
     raise last or TVError("No Philips TV found at %s" % host)
 
 
+def discover():
+    """Scan this computer's local /24 network for Philips TVs (JointSpace ports)."""
+    import socket
+    from concurrent.futures import ThreadPoolExecutor
+
+    def probe(target):
+        ip, port = target
+        try:
+            with socket.create_connection((ip, port), timeout=0.6):
+                return ip
+        except OSError:
+            return None
+
+    candidates = []
+    for own in lan_addresses():
+        prefix = own.rsplit(".", 1)[0]
+        targets = [("%s.%d" % (prefix, n), port) for n in range(1, 255) for port in (1925, 1926)
+                   if "%s.%d" % (prefix, n) != own]
+        with ThreadPoolExecutor(max_workers=128) as pool:
+            for ip in pool.map(probe, targets):
+                if ip and ip not in candidates:
+                    candidates.append(ip)
+
+    found = []
+    saved = dict(config)
+    for ip in candidates:
+        try:
+            info = detect(ip)
+            found.append({"host": ip, "name": str(info.get("name", ""))})
+        except TVError:
+            pass
+        config.clear()
+        config.update(saved)
+    return found
+
+
 def pair_request():
     device_id = "".join(random.SystemRandom().choice(string.ascii_letters + string.digits)
                         for _ in range(16))
@@ -314,6 +350,8 @@ def api(method, path, body):
         pending_pair.clear()
         save_config()
         return public_config()
+    if path == "/api/discover" and method == "POST":
+        return {"tvs": discover()}
     if path == "/api/status" and method == "GET":
         return tv_status() if config["host"] else demo.status()
     if path == "/api/key" and method == "POST":

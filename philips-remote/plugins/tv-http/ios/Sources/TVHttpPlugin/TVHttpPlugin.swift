@@ -8,8 +8,33 @@ public class TVHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "TVHttpPlugin"
     public let jsName = "TVHttp"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "localAddress", returnType: CAPPluginReturnPromise)
     ]
+
+    /// The phone's IPv4 address on Wi-Fi, used to work out which network to search for the TV.
+    @objc func localAddress(_ call: CAPPluginCall) {
+        var address = ""
+        var interfaces: UnsafeMutablePointer<ifaddrs>?
+        if getifaddrs(&interfaces) == 0 {
+            var pointer = interfaces
+            while let current = pointer {
+                let interface = current.pointee
+                if let socketAddress = interface.ifa_addr,
+                   socketAddress.pointee.sa_family == UInt8(AF_INET),
+                   String(cString: interface.ifa_name) == "en0" {
+                    var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    if getnameinfo(socketAddress, socklen_t(socketAddress.pointee.sa_len),
+                                   &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST) == 0 {
+                        address = String(cString: host)
+                    }
+                }
+                pointer = interface.ifa_next
+            }
+            freeifaddrs(interfaces)
+        }
+        call.resolve(["address": address])
+    }
 
     @objc func request(_ call: CAPPluginCall) {
         guard let urlString = call.getString("url"), let url = URL(string: urlString) else {

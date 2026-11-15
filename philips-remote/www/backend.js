@@ -68,10 +68,46 @@
       const needsPairing = JSON.stringify(info.featuring || {}).includes('pairing');
       if (scheme === 'http' && needsPairing) continue;  // Android TV: control lives on https/1926
       Object.assign(config, {scheme, port, version});
-      return;
+      return info;
     }
     config = previous;
     throw last || new TVError(`No Philips TV found at ${host}`);
+  }
+
+  // Scan the phone's Wi-Fi network (x.y.z.1-254) for anything answering on the TV's ports.
+  async function discover() {
+    let own = '';
+    try { own = (await native().localAddress()).address || ''; } catch (e) { /* handled below */ }
+    if (!/^\d+\.\d+\.\d+\.\d+$/.test(own)) {
+      throw new TVError('Cannot search: the phone is not connected to Wi-Fi.', 400);
+    }
+    const prefix = own.slice(0, own.lastIndexOf('.'));
+    const targets = [];
+    for (const [scheme, port] of [['http', 1925], ['https', 1926]]) {
+      for (let n = 1; n <= 254; n++) {
+        const ip = `${prefix}.${n}`;
+        if (ip !== own) targets.push({ip, url: `${scheme}://${ip}:${port}/6/system`});
+      }
+    }
+    const candidates = [];
+    for (let i = 0; i < targets.length; i += 64) {
+      await Promise.all(targets.slice(i, i + 64).map(async t => {
+        try {
+          const res = await native().request({url: t.url, method: 'GET', timeout: 1.5});
+          if (res.status > 0 && !candidates.includes(t.ip)) candidates.push(t.ip);
+        } catch (e) { /* nothing there */ }
+      }));
+    }
+    const found = [];
+    const saved = {...config};
+    for (const ip of candidates) {
+      try {
+        const info = await detect(ip);
+        found.push({host: ip, name: String((info && info.name) || '')});
+      } catch (e) { /* not a Philips TV */ }
+      config = {...saved};
+    }
+    return found;
   }
 
   async function pairRequest() {
@@ -181,6 +217,7 @@
       save();
       return publicConfig();
     }
+    if (path === '/api/discover' && post) return {tvs: await discover()};
     if (path === '/api/status' && !post) return config.host ? tvStatus() : demo.status();
     if (path === '/api/key' && post) { await sendKey(String(body.key || '')); return {ok: true}; }
     if (path === '/api/channel' && post) { await setChannel(body.number); return {ok: true}; }
